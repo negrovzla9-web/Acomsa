@@ -205,61 +205,68 @@ textarea.form-input{resize:vertical;min-height:80px}
 const {useState,useRef,useEffect}=React;
 
 // Simple SVG bar chart - no external deps needed
-function SimpleBarChart({data,keys,colors,height=180}){
+function SimpleBarChart({data,keys,colors,height}){
+  const H=height||180;
   if(!data||!data.length)return <div style={{padding:20,color:'#999',textAlign:'center'}}>Sin datos</div>;
-  const maxVal=Math.max(...data.flatMap(d=>keys.map(k=>Number(d[k])||0)),1);
-  const W=360,H=height,pad=30,barW=Math.max(8,Math.floor((W-pad*2)/data.length/keys.length-4));
+  const maxVal=Math.max(...data.flatMap(function(d){return keys.map(function(k){return Number(d[k])||0;});}),1);
+  const W=360,pad=30;
   const slotW=Math.floor((W-pad*2)/data.length);
+  const barW=Math.max(8,Math.floor(slotW/keys.length)-4);
+  const vb="0 0 "+W+" "+(H+40);
   return(
-    <svg viewBox={`0 0 ${W} ${H+40}`} style={{width:'100%',maxHeight:H+40}}>
-      {[0,0.25,0.5,0.75,1].map(t=>(
-        <line key={t} x1={pad} y1={H-(H-20)*t} x2={W-10} y2={H-(H-20)*t} stroke="#eee" strokeWidth="1"/>
-      ))}
-      {data.map((d,i)=>keys.map((k,ki)=>{
+    <svg viewBox={vb} style={{width:'100%',maxHeight:H+40}}>
+      {data.map(function(d,i){return keys.map(function(k,ki){
         const val=Number(d[k])||0;
         const bH=Math.max(2,Math.round((val/maxVal)*(H-20)));
         const x=pad+i*slotW+ki*(barW+3)+2;
-        return(<g key={`${k}${i}`}>
+        const keyStr=k+String(i);
+        return(<g key={keyStr}>
           <rect x={x} y={H-bH} width={barW} height={bH} fill={colors[ki]||'#7B1C2E'} rx="2" opacity="0.85"/>
         </g>);
-      }))}
-      {data.map((d,i)=>(
-        <text key={i} x={pad+i*slotW+slotW/2} y={H+14} textAnchor="middle" fontSize="9" fill="#888">
-          {String(d.name||d.mes||'').slice(0,6)}
-        </text>
-      ))}
-      {keys.map((k,i)=>(
-        <g key={k}>
+      });}).flat()}
+      {data.map(function(d,i){
+        const lbl=String(d.name||d.mes||d.etapa||'').slice(0,5);
+        const tx=pad+i*slotW+slotW/2;
+        return(<text key={i} x={tx} y={H+14} textAnchor="middle" fontSize="9" fill="#888">{lbl}</text>);
+      })}
+      {keys.map(function(k,i){
+        return(<g key={k}>
           <rect x={pad+i*80} y={H+24} width={10} height={8} fill={colors[i]||'#7B1C2E'} rx="1"/>
-          <text x={pad+i*80+14} y={H+32} fontSize="9" fill="#666">{k}</text>
-        </g>
-      ))}
+          <text x={pad+i*80+14} y={H+32} fontSize="9" fill="#555">{k}</text>
+        </g>);
+      })}
     </svg>
   );
 }
-function SimplePieChart({data,colors,height=180}){
+function SimplePieChart({data,colors,height}){
   if(!data||!data.length)return <div style={{padding:20,color:'#999',textAlign:'center'}}>Sin datos</div>;
-  const total=data.reduce((s,d)=>s+(Number(d.value)||0),0)||1;
-  const cx=90,cy=80,r=65;let angle=-90;
-  const slices=data.map((d,i)=>{
+  const total=data.reduce(function(s,d){return s+(Number(d.value)||0);},0)||1;
+  const cx=90,cy=85,r=65;
+  let angle=-90;
+  const slices=data.map(function(d,i){
     const pct=(Number(d.value)||0)/total;
     const a=pct*360;
-    const r1=angle*Math.PI/180;angle+=a;const r2=angle*Math.PI/180;
+    const r1=angle*Math.PI/180;
+    angle+=a;
+    const r2=angle*Math.PI/180;
     const x1=cx+r*Math.cos(r1),y1=cy+r*Math.sin(r1);
     const x2=cx+r*Math.cos(r2),y2=cy+r*Math.sin(r2);
     const large=a>180?1:0;
-    return{name:d.name,path:`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2}Z`,
-      color:colors[i%colors.length],pct:Math.round(pct*100)};
+    const pathD="M"+cx+","+cy+" L"+x1+","+y1+" A"+r+","+r+" 0 "+large+" 1 "+x2+","+y2+"Z";
+    return{name:d.name,pathD:pathD,color:colors[i%colors.length],pct:Math.round(pct*100)};
   });
   return(
-    <svg viewBox="0 0 280 190" style={{width:'100%',maxHeight:190}}>
-      {slices.map((s,i)=><path key={i} d={s.path} fill={s.color} opacity="0.9" stroke="#fff" strokeWidth="2"/>)}
-      {slices.map((s,i)=>(
-        <g key={'l'+i}>
-          <rect x={185} y={15+i*22} width={10} height={10} fill={s.color} rx="2"/>
-          <text x={200} y={24+i*22} fontSize="9.5" fill="#444">{s.name} {s.pct}%</text>
-        </g>
-      ))}
+    <svg viewBox="0 0 280 195" style={{width:'100%',maxHeight:195}}>
+      {slices.map(function(s,i){return <path key={i} d={s.pathD} fill={s.color} opacity="0.9" stroke="#fff" strokeWidth="2"/>;})}
+      {slices.map(function(s,i){
+        const ly=15+i*22;
+        const ty=24+i*22;
+        const lbl=s.name+" "+s.pct+"%";
+        return(<g key={"l"+i}>
+          <rect x={185} y={ly} width={10} height={10} fill={s.color} rx="2"/>
+          <text x={200} y={ty} fontSize="9.5" fill="#444">{lbl}</text>
+        </g>);
+      })}
     </svg>
   );
 }
@@ -2058,3 +2065,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
+
